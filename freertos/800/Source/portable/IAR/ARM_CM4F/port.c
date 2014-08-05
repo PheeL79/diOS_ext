@@ -136,7 +136,7 @@ calculations. */
 
 /* Each task maintains its own interrupt status in the critical nesting
 variable. */
-static UBaseType_t uxCriticalNesting = 0xaaaaaaaa;
+static UBaseType_t uxCriticalNesting = 0x0;
 
 /*
  * Setup the timer to generate the tick interrupts.  The implementation in this
@@ -363,7 +363,6 @@ void vPortExitCritical( void )
 	}
 }
 /*-----------------------------------------------------------*/
-
 void xPortSysTickHandler( void )
 {
 	/* The SysTick runs at the lowest interrupt priority, so when this interrupt
