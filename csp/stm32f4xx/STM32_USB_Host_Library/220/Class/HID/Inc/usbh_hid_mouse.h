@@ -1,6 +1,6 @@
 /**
   ******************************************************************************
-  * @file    usbh_hid_mouse.h 
+  * @file    usbh_hid_mouse.h
   * @author  MCD Application Team
   * @version V3.1.0
   * @date    19-June-2014
@@ -16,14 +16,14 @@
   *
   *        http://www.st.com/software_license_agreement_liberty_v2
   *
-  * Unless required by applicable law or agreed to in writing, software 
-  * distributed under the License is distributed on an "AS IS" BASIS, 
+  * Unless required by applicable law or agreed to in writing, software
+  * distributed under the License is distributed on an "AS IS" BASIS,
   * WITHOUT WARRANTIES OR CONDITIONS OF ANY KIND, either express or implied.
   * See the License for the specific language governing permissions and
   * limitations under the License.
   *
   ******************************************************************************
-  */ 
+  */
 
 
 /* Define to prevent recursive  ----------------------------------------------*/
@@ -48,71 +48,71 @@
 /** @defgroup USBH_HID_MOUSE
   * @brief This file is the Header file for USBH_HID_MOUSE.c
   * @{
-  */ 
+  */
 
 
 /** @defgroup USBH_HID_MOUSE_Exported_Types
   * @{
-  */ 
+  */
 
 typedef struct _HID_MOUSE_Info
 {
-  uint8_t              x; 
-  uint8_t              y;  
-  uint8_t              buttons[3];
+  int16_t             x;
+  int16_t             y;
+  uint8_t             buttons[3];
 }
 HID_MOUSE_Info_TypeDef;
 
 /**
   * @}
-  */ 
+  */
 
 /** @defgroup USBH_HID_MOUSE_Exported_Defines
   * @{
-  */ 
+  */
 /**
   * @}
-  */ 
+  */
 
 /** @defgroup USBH_HID_MOUSE_Exported_Macros
   * @{
-  */ 
+  */
 /**
   * @}
-  */ 
+  */
 
 /** @defgroup USBH_HID_MOUSE_Exported_Variables
   * @{
-  */ 
+  */
 /**
   * @}
-  */ 
+  */
 
 /** @defgroup USBH_HID_MOUSE_Exported_FunctionsPrototype
   * @{
-  */ 
+  */
 USBH_StatusTypeDef USBH_HID_MouseInit(USBH_HandleTypeDef *phost);
 HID_MOUSE_Info_TypeDef *USBH_HID_GetMouseInfo(USBH_HandleTypeDef *phost);
 
 /**
   * @}
-  */ 
+  */
 
 #endif /* __USBH_HID_MOUSE_H */
 
 /**
   * @}
-  */ 
+  */
 
 /**
   * @}
-  */ 
+  */
 
 /**
   * @}
-  */ 
+  */
 
 /**
   * @}
-  */ 
+  */
 /************************ (C) COPYRIGHT STMicroelectronics *****END OF FILE****/
