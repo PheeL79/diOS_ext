@@ -64,13 +64,13 @@
 #define NETIF_STATUS_CALLBACK(n) do{ if (n->status_callback) { (n->status_callback)(n); }}while(0)
 #else
 #define NETIF_STATUS_CALLBACK(n)
-#endif /* LWIP_NETIF_STATUS_CALLBACK */ 
+#endif /* LWIP_NETIF_STATUS_CALLBACK */
 
 #if LWIP_NETIF_LINK_CALLBACK
 #define NETIF_LINK_CALLBACK(n) do{ if (n->link_callback) { (n->link_callback)(n); }}while(0)
 #else
 #define NETIF_LINK_CALLBACK(n)
-#endif /* LWIP_NETIF_LINK_CALLBACK */ 
+#endif /* LWIP_NETIF_LINK_CALLBACK */
 
 struct netif *netif_list;
 struct netif *netif_default;
@@ -78,7 +78,7 @@ struct netif *netif_default;
 static u8_t netif_num;
 
 #if LWIP_HAVE_LOOPIF
-static struct netif loop_netif;
+//static struct netif loop_netif;
 
 /**
  * Initialize a lwip network interface structure for a loopback interface
@@ -105,20 +105,21 @@ netif_loopif_init(struct netif *netif)
 void
 netif_init(void)
 {
-#if LWIP_HAVE_LOOPIF
-  ip_addr_t loop_ipaddr, loop_netmask, loop_gw;
-  IP4_ADDR(&loop_gw, 127,0,0,1);
-  IP4_ADDR(&loop_ipaddr, 127,0,0,1);
-  IP4_ADDR(&loop_netmask, 255,0,0,0);
-
-#if NO_SYS
-  netif_add(&loop_netif, &loop_ipaddr, &loop_netmask, &loop_gw, NULL, netif_loopif_init, ip_input);
-#else  /* NO_SYS */
-  netif_add(&loop_netif, &loop_ipaddr, &loop_netmask, &loop_gw, NULL, netif_loopif_init, tcpip_input);
-#endif /* NO_SYS */
-  netif_set_up(&loop_netif);
-
-#endif /* LWIP_HAVE_LOOPIF */
+//We do it manually in the os_task_net.c
+//#if LWIP_HAVE_LOOPIF
+//  ip_addr_t loop_ipaddr, loop_netmask, loop_gw;
+//  IP4_ADDR(&loop_gw, 127,0,0,1);
+//  IP4_ADDR(&loop_ipaddr, 127,0,0,1);
+//  IP4_ADDR(&loop_netmask, 255,0,0,0);
+//
+//#if NO_SYS
+//  netif_add(&loop_netif, &loop_ipaddr, &loop_netmask, &loop_gw, NULL, netif_loopif_init, ip_input);
+//#else  /* NO_SYS */
+//  netif_add(&loop_netif, &loop_ipaddr, &loop_netmask, &loop_gw, NULL, netif_loopif_init, tcpip_input);
+//#endif /* NO_SYS */
+//  netif_set_up(&loop_netif);
+//
+//#endif /* LWIP_HAVE_LOOPIF */
 }
 
 /**
@@ -444,17 +445,17 @@ netif_set_default(struct netif *netif)
 /**
  * Bring an interface up, available for processing
  * traffic.
- * 
+ *
  * @note: Enabling DHCP on a down interface will make it come
  * up once configured.
- * 
+ *
  * @see dhcp_start()
- */ 
+ */
 void netif_set_up(struct netif *netif)
 {
   if (!(netif->flags & NETIF_FLAG_UP)) {
     netif->flags |= NETIF_FLAG_UP;
-    
+
 #if LWIP_SNMP
     snmp_get_sysuptime(&netif->ts);
 #endif /* LWIP_SNMP */
@@ -463,7 +464,7 @@ void netif_set_up(struct netif *netif)
 
     if (netif->flags & NETIF_FLAG_LINK_UP) {
 #if LWIP_ARP
-      /* For Ethernet network interfaces, we would like to send a "gratuitous ARP" */ 
+      /* For Ethernet network interfaces, we would like to send a "gratuitous ARP" */
       if (netif->flags & (NETIF_FLAG_ETHARP)) {
         etharp_gratuitous(netif);
       }
@@ -484,9 +485,9 @@ void netif_set_up(struct netif *netif)
  *
  * @note: Enabling DHCP on a down interface will make it come
  * up once configured.
- * 
+ *
  * @see dhcp_start()
- */ 
+ */
 void netif_set_down(struct netif *netif)
 {
   if (netif->flags & NETIF_FLAG_UP) {
@@ -551,7 +552,7 @@ void netif_set_link_up(struct netif *netif )
 
     if (netif->flags & NETIF_FLAG_UP) {
 #if LWIP_ARP
-      /* For Ethernet network interfaces, we would like to send a "gratuitous ARP" */ 
+      /* For Ethernet network interfaces, we would like to send a "gratuitous ARP" */
       if (netif->flags & NETIF_FLAG_ETHARP) {
         etharp_gratuitous(netif);
       }
@@ -619,11 +620,11 @@ netif_loop_output(struct netif *netif, struct pbuf *p,
   /* If we have a loopif, SNMP counters are adjusted for it,
    * if not they are adjusted for 'netif'. */
 #if LWIP_SNMP
-#if LWIP_HAVE_LOOPIF
-  struct netif *stats_if = &loop_netif;
-#else /* LWIP_HAVE_LOOPIF */
+//#if LWIP_HAVE_LOOPIF
+//  struct netif *stats_if = &loop_netif;
+//#else /* LWIP_HAVE_LOOPIF */
   struct netif *stats_if = netif;
-#endif /* LWIP_HAVE_LOOPIF */
+//#endif /* LWIP_HAVE_LOOPIF */
 #endif /* LWIP_SNMP */
   SYS_ARCH_DECL_PROTECT(lev);
   LWIP_UNUSED_ARG(ipaddr);
@@ -701,11 +702,11 @@ netif_poll(struct netif *netif)
   /* If we have a loopif, SNMP counters are adjusted for it,
    * if not they are adjusted for 'netif'. */
 #if LWIP_SNMP
-#if LWIP_HAVE_LOOPIF
-  struct netif *stats_if = &loop_netif;
-#else /* LWIP_HAVE_LOOPIF */
+//#if LWIP_HAVE_LOOPIF
+//  struct netif *stats_if = &loop_netif;
+//#else /* LWIP_HAVE_LOOPIF */
   struct netif *stats_if = netif;
-#endif /* LWIP_HAVE_LOOPIF */
+//#endif /* LWIP_HAVE_LOOPIF */
 #endif /* LWIP_SNMP */
   SYS_ARCH_DECL_PROTECT(lev);
 
