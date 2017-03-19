@@ -39,8 +39,9 @@
 
 #include "lwip/apps/mqtt_opts.h"
 #include "lwip/err.h"
+#include "lwip/ip_addr.h"
 
-#ifdef	__cplusplus
+#ifdef __cplusplus
 extern "C" {
 #endif
 
@@ -106,7 +107,7 @@ typedef void (*mqtt_connection_cb_t)(mqtt_client_t *client, void *arg, mqtt_conn
  * Data callback flags */
 enum {
   /** Flag set when last fragment of data arrives in data callback */
-  MQTT_DATA_FLAG_LAST = 1,
+  MQTT_DATA_FLAG_LAST = 1
 };
 
 /** 
@@ -114,7 +115,6 @@ enum {
  * Function prototype for MQTT incoming publish data callback function. Called when data
  * arrives to a subscribed topic @see mqtt_subscribe
  *
- * @param client MQTT client itself
  * @param arg Additional argument to pass to the callback function
  * @param data User data, pointed object, data may not be referenced after callback return,
           NULL is passed when all publish data are delivered
@@ -130,11 +130,9 @@ typedef void (*mqtt_incoming_data_cb_t)(void *arg, const u8_t *data, u16_t len, 
  * Function prototype for MQTT incoming publish function. Called when an incoming publish
  * arrives to a subscribed topic @see mqtt_subscribe
  *
- * @param client MQTT client itself
  * @param arg Additional argument to pass to the callback function
  * @param topic Zero terminated Topic text string, topic may not be referenced after callback return
  * @param tot_len Total length of publish data, if set to 0 (no publish payload) data callback will not be invoked
- * @return Optional numerical topic identifier to be used in data callback
  */
 typedef void (*mqtt_incoming_publish_cb_t)(void *arg, const char *topic, u32_t tot_len);
 
@@ -239,7 +237,7 @@ err_t mqtt_sub_unsub(mqtt_client_t *client, const char *topic, u8_t qos, mqtt_re
 err_t mqtt_publish(mqtt_client_t *client, const char *topic, const void *payload, u16_t payload_length, u8_t qos, u8_t retain,
                                     mqtt_request_cb_t cb, void *arg);
 
-#ifdef	__cplusplus
+#ifdef __cplusplus
 }
 #endif
 

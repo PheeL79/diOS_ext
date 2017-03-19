@@ -71,6 +71,7 @@ CORE6FILES=$(LWIPDIR)/core/ipv6/dhcp6.c \
 APIFILES=$(LWIPDIR)/api/api_lib.c \
 	$(LWIPDIR)/api/api_msg.c \
 	$(LWIPDIR)/api/err.c \
+	$(LWIPDIR)/api/if_api.c \
 	$(LWIPDIR)/api/netbuf.c \
 	$(LWIPDIR)/api/netdb.c \
 	$(LWIPDIR)/api/netifapi.c \
@@ -136,6 +137,8 @@ SNMPFILES=$(LWIPDIR)/apps/snmp/snmp_asn1.c \
 	$(LWIPDIR)/apps/snmp/snmp_mib2_system.c \
 	$(LWIPDIR)/apps/snmp/snmp_mib2_tcp.c \
 	$(LWIPDIR)/apps/snmp/snmp_mib2_udp.c \
+	$(LWIPDIR)/apps/snmp/snmp_snmpv2_framework.c \
+	$(LWIPDIR)/apps/snmp/snmp_snmpv2_usm.c \
 	$(LWIPDIR)/apps/snmp/snmp_msg.c \
 	$(LWIPDIR)/apps/snmp/snmpv3.c \
 	$(LWIPDIR)/apps/snmp/snmp_netconn.c \
@@ -145,8 +148,7 @@ SNMPFILES=$(LWIPDIR)/apps/snmp/snmp_asn1.c \
 	$(LWIPDIR)/apps/snmp/snmp_table.c \
 	$(LWIPDIR)/apps/snmp/snmp_threadsync.c \
 	$(LWIPDIR)/apps/snmp/snmp_traps.c \
-	$(LWIPDIR)/apps/snmp/snmpv3_mbedtls.c \
-	$(LWIPDIR)/apps/snmp/snmpv3_dummy.c
+	$(LWIPDIR)/apps/snmp/snmpv3_mbedtls.c
 
 # HTTPDFILES: HTTP server
 HTTPDFILES=$(LWIPDIR)/apps/httpd/fs.c \

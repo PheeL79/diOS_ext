@@ -63,6 +63,12 @@ extern "C" {
 #define NETIF_MAX_HWADDR_LEN 6U
 #endif
 
+/** The size of a fully constructed netif name which the
+ * netif can be identified by in APIs. Composed of
+ * 2 chars, 3 (max) digits, and 1 \0
+ */
+#define NETIF_NAMESIZE 6
+
 /**
  * @defgroup netif_flags Flags
  * @ingroup netif
@@ -217,14 +223,16 @@ u8_t netif_alloc_client_data_id(void);
  * Get client data. Obtain ID from netif_alloc_client_data_id().
  */
 #define netif_get_client_data(netif, id)       (netif)->client_data[(id)]
-#endif /* LWIP_DHCP || LWIP_AUTOIP || (LWIP_NUM_NETIF_CLIENT_DATA > 0) */
+#endif
 
 /** Generic data structure used for all lwIP network interfaces.
  *  The following fields should be filled in by the initialization
  *  function for the device driver: hwaddr_len, hwaddr[], mtu, flags */
 struct netif {
+#if !LWIP_SINGLE_NETIF
   /** pointer to next in linked list */
   struct netif *next;
+#endif
 
 #if LWIP_IPV4
   /** IP address configuration in network byte order */
@@ -238,6 +246,13 @@ struct netif {
   /** The state of each IPv6 address (Tentative, Preferred, etc).
    * @see ip6_addr.h */
   u8_t ip6_addr_state[LWIP_IPV6_NUM_ADDRESSES];
+#if LWIP_IPV6_ADDRESS_LIFETIMES
+  /** Remaining valid and preferred lifetime of each IPv6 address, in seconds.
+   * For valid lifetimes, the special value of IP6_ADDR_LIFE_STATIC (0)
+   * indicates the address is static and has no lifetimes. */
+  u32_t ip6_addr_valid_life[LWIP_IPV6_NUM_ADDRESSES];
+  u32_t ip6_addr_pref_life[LWIP_IPV6_NUM_ADDRESSES];
+#endif /* LWIP_IPV6_ADDRESS_LIFETIMES */
 #endif /* LWIP_IPV6 */
   /** This function is called by the network device driver
    *  to pass a packet up the TCP/IP stack. */
@@ -280,14 +295,6 @@ struct netif {
 #ifdef netif_get_client_data
   void* client_data[LWIP_NETIF_CLIENT_DATA_INDEX_MAX + LWIP_NUM_NETIF_CLIENT_DATA];
 #endif
-#if LWIP_IPV6_AUTOCONFIG
-  /** is this netif enabled for IPv6 autoconfiguration */
-  u8_t ip6_autoconfig_enabled;
-#endif /* LWIP_IPV6_AUTOCONFIG */
-#if LWIP_IPV6_SEND_ROUTER_SOLICIT
-  /** Number of Router Solicitation messages that remain to be sent. */
-  u8_t rs_count;
-#endif /* LWIP_IPV6_SEND_ROUTER_SOLICIT */
 #if LWIP_NETIF_HOSTNAME
   /* the hostname for this netif, NULL is a valid value */
   const char*  hostname;
@@ -297,16 +304,27 @@ struct netif {
 #endif /* LWIP_CHECKSUM_CTRL_PER_NETIF*/
   /** maximum transfer unit (in bytes) */
   u16_t mtu;
+  /** link level hardware address of this interface */
+  /* Ensure hwaddr is 16-bit aligned by placing it behind u16_t value
+   * because it is accessed via ETHADDR16_COPY() macro in etharp.c and autoip.c */
+  u8_t hwaddr[NETIF_MAX_HWADDR_LEN];
   /** number of bytes used in hwaddr */
   u8_t hwaddr_len;
-  /** link level hardware address of this interface */
-  u8_t hwaddr[NETIF_MAX_HWADDR_LEN];
   /** flags (@see @ref netif_flags) */
   u8_t flags;
   /** descriptive abbreviation */
   char name[2];
-  /** number of this interface */
+  /** number of this interface. Used for @ref if_api and @ref netifapi_netif, 
+   * as well as for IPv6 zones */
   u8_t num;
+#if LWIP_IPV6_AUTOCONFIG
+  /** is this netif enabled for IPv6 autoconfiguration */
+  u8_t ip6_autoconfig_enabled;
+#endif /* LWIP_IPV6_AUTOCONFIG */
+#if LWIP_IPV6_SEND_ROUTER_SOLICIT
+  /** Number of Router Solicitation messages that remain to be sent. */
+  u8_t rs_count;
+#endif /* LWIP_IPV6_SEND_ROUTER_SOLICIT */
 #if MIB2_STATS
   /** link type (from "snmp_ifType" enum from snmp_mib2.h) */
   u8_t link_type;
@@ -349,8 +367,13 @@ struct netif {
 #define IF__NETIF_CHECKSUM_ENABLED(netif, chksumflag)
 #endif /* LWIP_CHECKSUM_CTRL_PER_NETIF */
 
+#if LWIP_SINGLE_NETIF
+#define NETIF_FOREACH(netif) if (((netif) = netif_default) != NULL)
+#else /* LWIP_SINGLE_NETIF */
 /** The list of network interfaces. */
 extern struct netif *netif_list;
+#define NETIF_FOREACH(netif) for (netif = netif_list; netif != NULL; netif = netif->next)
+#endif /* LWIP_SINGLE_NETIF */
 /** The default network interface. */
 extern struct netif *netif_default;
 
@@ -459,6 +482,20 @@ s8_t netif_get_ip6_addr_match(struct netif *netif, const ip6_addr_t *ip6addr);
 void netif_create_ip6_linklocal_address(struct netif *netif, u8_t from_mac_48bit);
 err_t netif_add_ip6_address(struct netif *netif, const ip6_addr_t *ip6addr, s8_t *chosen_idx);
 #define netif_set_ip6_autoconfig_enabled(netif, action) do { if(netif) { (netif)->ip6_autoconfig_enabled = (action); }}while(0)
+#if LWIP_IPV6_ADDRESS_LIFETIMES
+#define netif_ip6_addr_valid_life(netif, i)  \
+    (((netif) != NULL) ? ((netif)->ip6_addr_valid_life[i]) : IP6_ADDR_LIFE_STATIC)
+#define netif_ip6_addr_set_valid_life(netif, i, secs) \
+    do { if (netif != NULL) { (netif)->ip6_addr_valid_life[i] = (secs); }} while (0)
+#define netif_ip6_addr_pref_life(netif, i)  \
+    (((netif) != NULL) ? ((netif)->ip6_addr_pref_life[i]) : IP6_ADDR_LIFE_STATIC)
+#define netif_ip6_addr_set_pref_life(netif, i, secs) \
+    do { if (netif != NULL) { (netif)->ip6_addr_pref_life[i] = (secs); }} while (0)
+#define netif_ip6_addr_isstatic(netif, i)  \
+    (netif_ip6_addr_valid_life((netif), (i)) == IP6_ADDR_LIFE_STATIC)
+#else /* !LWIP_IPV6_ADDRESS_LIFETIMES */
+#define netif_ip6_addr_isstatic(netif, i)  (1) /* all addresses are static */
+#endif /* !LWIP_IPV6_ADDRESS_LIFETIMES */
 #endif /* LWIP_IPV6 */
 
 #if LWIP_NETIF_HWADDRHINT
@@ -466,6 +503,125 @@ err_t netif_add_ip6_address(struct netif *netif, const ip6_addr_t *ip6addr, s8_t
 #else /* LWIP_NETIF_HWADDRHINT */
 #define NETIF_SET_HWADDRHINT(netif, hint)
 #endif /* LWIP_NETIF_HWADDRHINT */
+
+u8_t netif_name_to_index(const char *name);
+char * netif_index_to_name(u8_t idx, char *name);
+struct netif* netif_get_by_index(u8_t idx);
+
+/* Interface indexes always start at 1 per RFC 3493, section 4, num starts at 0 */
+#define netif_get_index(netif)      ((netif)->num + 1)
+#define NETIF_NO_INDEX              (0)
+
+/**
+ * @ingroup netif
+ * Extended netif status callback (NSC) reasons enumeration.
+ * May be extended in the future!
+ */
+typedef enum
+{
+  /** netif was added. arg: NULL. Called AFTER netif was added. */
+  LWIP_NSC_NETIF_ADDED,
+  /** netif was removed. arg: NULL. Called BEFORE netif is removed. */
+  LWIP_NSC_NETIF_REMOVED,
+  /** link changed */
+  LWIP_NSC_LINK_CHANGED,
+  /** netif administrative status changed.\n
+   * up is called AFTER netif is set up.\n
+   * down is called BEFORE the netif is actually set down. */
+  LWIP_NSC_STATUS_CHANGED,
+  /** IPv4 address has changed */
+  LWIP_NSC_IPV4_ADDRESS_CHANGED,
+  /** IPv4 gateway has changed */
+  LWIP_NSC_IPV4_GATEWAY_CHANGED,
+  /** IPv4 netmask has changed */
+  LWIP_NSC_IPV4_NETMASK_CHANGED,
+  /** called AFTER IPv4 address/gateway/netmask changes have been applied. arg: NULL */
+  LWIP_NSC_IPV4_SETTINGS_CHANGED,
+  /** IPv6 address was added */
+  LWIP_NSC_IPV6_SET,
+  /** IPv6 address state has changed */
+  LWIP_NSC_IPV6_ADDR_STATE_CHANGED
+} netif_nsc_reason_t;
+
+/** @ingroup netif
+ * Argument supplied to netif_ext_callback_fn.
+ */
+typedef union
+{
+  /** Args to LWIP_NSC_LINK_CHANGED callback */
+  struct link_changed_s
+  {
+    /** 1: up; 0: down */
+    u8_t state;
+  } link_changed;
+  /** Args to LWIP_NSC_STATUS_CHANGED callback */
+  struct status_changed_s
+  {
+    /** 1: up; 0: down */
+    u8_t state;
+  } status_changed;
+  /** Args to LWIP_NSC_IPV4_ADDRESS_CHANGED callback */
+  struct ipv4_changed_s
+  {
+    /** Old IPv4 address */
+    const ip_addr_t* old_address;
+  } ipv4_changed;
+  /** Args to LWIP_NSC_IPV4_GATEWAY_CHANGED callback */
+  struct ipv4_gw_changed_s
+  {
+    /** Old IPv4 gateway */
+    const ip_addr_t* old_address;
+  } ipv4_gw_changed;
+  /** Args to LWIP_NSC_IPV4_NETMASK_CHANGED callback */
+  struct ipv4_nm_changed_s
+  {
+    /** Old IPv4 netmask */
+    const ip_addr_t* old_address;
+  } ipv4_nm_changed;
+  /** Args to LWIP_NSC_IPV6_SET callback */
+  struct ipv6_set_s
+  {
+    /** Index of changed IPv6 address */
+    s8_t addr_index;
+    /** Old IPv6 address */
+    const ip_addr_t* old_address;
+  } ipv6_set;
+  /** Args to LWIP_NSC_IPV6_ADDR_STATE_CHANGED callback */
+  struct ipv6_addr_state_changed_s
+  {
+    /** Index of affected IPv6 address */
+    s8_t addr_index;
+    /** Affected IPv6 address */
+    const ip_addr_t* address;
+  } ipv6_addr_state_changed;
+} netif_ext_callback_args_t;
+
+/**
+ * @ingroup netif
+ * Function used for extended netif status callbacks
+ * Note: When parsing reason argument, keep in mind that more reasons may be added in the future!
+ * @param netif netif that is affected by change
+ * @param reason change reason
+ * @param args depends on reason, see reason description
+ */
+typedef void (*netif_ext_callback_fn)(struct netif* netif, netif_nsc_reason_t reason, const netif_ext_callback_args_t* args);
+
+#if LWIP_NETIF_EXT_STATUS_CALLBACK
+struct netif_ext_callback;
+typedef struct netif_ext_callback
+{
+  netif_ext_callback_fn callback_fn;
+  struct netif_ext_callback* next;
+} netif_ext_callback_t;
+
+#define NETIF_DECLARE_EXT_CALLBACK(name) static netif_ext_callback_t name;
+void netif_add_ext_callback(netif_ext_callback_t* callback, netif_ext_callback_fn fn);
+void netif_invoke_ext_callback(struct netif* netif, netif_nsc_reason_t reason, const netif_ext_callback_args_t* args);
+#else
+#define NETIF_DECLARE_EXT_CALLBACK(name)
+#define netif_add_ext_callback(callback, fn)
+#define netif_invoke_ext_callback(netif, reason, args)
+#endif
 
 #ifdef __cplusplus
 }

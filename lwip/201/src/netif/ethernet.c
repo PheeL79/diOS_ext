@@ -56,6 +56,10 @@
 #include "netif/ppp/pppoe.h"
 #endif /* PPPOE_SUPPORT */
 
+#ifdef LWIP_HOOK_FILENAME
+#include LWIP_HOOK_FILENAME
+#endif
+
 const struct eth_addr ethbroadcast = {{0xff,0xff,0xff,0xff,0xff,0xff}};
 const struct eth_addr ethzero = {{0,0,0,0,0,0}};
 
@@ -88,6 +92,10 @@ ethernet_input(struct pbuf *p, struct netif *netif)
     ETHARP_STATS_INC(etharp.drop);
     MIB2_STATS_NETIF_INC(netif, ifinerrors);
     goto free_and_return;
+  }
+
+  if (p->if_idx == NETIF_NO_INDEX) {
+    p->if_idx = netif_get_index(netif);
   }
 
   /* points to packet payload, which starts with an Ethernet header */
@@ -289,7 +297,7 @@ ethernet_output(struct netif* netif, struct pbuf* p,
 
   ethhdr = (struct eth_hdr*)p->payload;
   ethhdr->type = eth_type_be;
-  ETHADDR32_COPY(&ethhdr->dest, dst);
+  ETHADDR16_COPY(&ethhdr->dest, dst);
   ETHADDR16_COPY(&ethhdr->src,  src);
 
   LWIP_ASSERT("netif->hwaddr_len must be 6 for ethernet_output!",

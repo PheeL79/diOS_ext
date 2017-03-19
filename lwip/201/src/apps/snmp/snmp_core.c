@@ -193,11 +193,16 @@ static const struct snmp_obj_id* snmp_device_enterprise_oid         = &snmp_devi
 const u32_t snmp_zero_dot_zero_values[] = { 0, 0 };
 const struct snmp_obj_id_const_ref snmp_zero_dot_zero = { LWIP_ARRAYSIZE(snmp_zero_dot_zero_values), snmp_zero_dot_zero_values };
 
-
-#if SNMP_LWIP_MIB2
+#if SNMP_LWIP_MIB2 && LWIP_SNMP_V3
+#include "lwip/apps/snmp_mib2.h"
+#include "lwip/apps/snmp_snmpv2_framework.h"
+#include "lwip/apps/snmp_snmpv2_usm.h"
+static const struct snmp_mib* const default_mibs[] = { &mib2, &snmpframeworkmib, &snmpusmmib };
+static u8_t snmp_num_mibs                          = LWIP_ARRAYSIZE(default_mibs);
+#elif SNMP_LWIP_MIB2
 #include "lwip/apps/snmp_mib2.h"
 static const struct snmp_mib* const default_mibs[] = { &mib2 };
-static u8_t snmp_num_mibs                          = 1;
+static u8_t snmp_num_mibs                          = LWIP_ARRAYSIZE(default_mibs);
 #else
 static const struct snmp_mib* const default_mibs[] = { NULL };
 static u8_t snmp_num_mibs                          = 0;
@@ -655,21 +660,7 @@ snmp_oid_equal(const u32_t *oid1, u8_t oid1_len, const u32_t *oid2, u8_t oid2_le
 u8_t
 netif_to_num(const struct netif *netif)
 {
-  u8_t result = 0;
-  struct netif *netif_iterator = netif_list;
-
-  while (netif_iterator != NULL) {
-    result++;
-
-    if (netif_iterator == netif) {
-      return result;
-    }
-
-    netif_iterator = netif_iterator->next;
-  }
-
-  LWIP_ASSERT("netif not found in netif_list", 0);
-  return 0;
+  return netif_get_index(netif);
 }
 
 static const struct snmp_mib*
@@ -1121,7 +1112,7 @@ snmp_next_oid_init(struct snmp_next_oid_state *state,
 this methid is intended if the complete OID is not yet known but it is very expensive to build it up,
 so it is possible to test the starting part before building up the complete oid and pass it to snmp_next_oid_check()*/
 u8_t
-snmp_next_oid_precheck(struct snmp_next_oid_state *state, const u32_t *oid, const u8_t oid_len)
+snmp_next_oid_precheck(struct snmp_next_oid_state *state, const u32_t *oid, u8_t oid_len)
 {
   if (state->status != SNMP_NEXT_OID_STATUS_BUF_TO_SMALL) {
     u8_t start_oid_len = (oid_len < state->start_oid_len) ? oid_len : state->start_oid_len;
@@ -1141,7 +1132,7 @@ snmp_next_oid_precheck(struct snmp_next_oid_state *state, const u32_t *oid, cons
 
 /** checks the passed OID if it is a candidate to be the next one (get_next); returns !=0 if passed oid is currently closest, otherwise 0 */
 u8_t
-snmp_next_oid_check(struct snmp_next_oid_state *state, const u32_t *oid, const u8_t oid_len, void* reference)
+snmp_next_oid_check(struct snmp_next_oid_state *state, const u32_t *oid, u8_t oid_len, void* reference)
 {
   /* do not overwrite a fail result */
   if (state->status != SNMP_NEXT_OID_STATUS_BUF_TO_SMALL) {

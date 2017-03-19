@@ -144,6 +144,15 @@
 #if !defined SMEMCPY || defined __DOXYGEN__
 #define SMEMCPY(dst,src,len)            memcpy(dst,src,len)
 #endif
+
+/**
+ * MEMMOVE: override this if you have a faster implementation at hand than the
+ * one included in your C library.  lwIP currently uses MEMMOVE only when IPv6
+ * fragmentation support is enabled.
+ */
+#if !defined MEMMOVE || defined __DOXYGEN__
+#define MEMMOVE(dst,src,len)            memmove(dst,src,len)
+#endif
 /**
  * @}
  */
@@ -617,7 +626,7 @@
  * (but this should only occur for AutoIP).
  */
 #if !defined ETHARP_TABLE_MATCH_NETIF || defined __DOXYGEN__
-#define ETHARP_TABLE_MATCH_NETIF        0
+#define ETHARP_TABLE_MATCH_NETIF        !LWIP_SINGLE_NETIF
 #endif
 /**
  * @}
@@ -963,7 +972,29 @@
 
 /*
    ----------------------------------
-   ----- Multicast/IGMP options -----
+   -------- Multicast options -------
+   ----------------------------------
+*/
+/**
+ * @defgroup lwip_opts_multicast Multicast
+ * @ingroup lwip_opts_infrastructure
+ * @{
+ */
+/**
+ * LWIP_MULTICAST_TX_OPTIONS==1: Enable multicast TX support like the socket options
+ * IP_MULTICAST_TTL/IP_MULTICAST_IF/IP_MULTICAST_LOOP, as well as (currently only)
+ * core support for the corresponding IPv6 options.
+ */
+#if !defined LWIP_MULTICAST_TX_OPTIONS || defined __DOXYGEN__
+#define LWIP_MULTICAST_TX_OPTIONS       ((LWIP_IGMP || LWIP_IPV6_MLD) && (LWIP_UDP || LWIP_RAW))
+#endif
+/**
+ * @}
+ */
+
+/*
+   ----------------------------------
+   ---------- IGMP options ----------
    ----------------------------------
 */
 /**
@@ -980,14 +1011,6 @@
 #if !LWIP_IPV4
 #undef LWIP_IGMP
 #define LWIP_IGMP                       0
-#endif
-
-/**
- * LWIP_MULTICAST_TX_OPTIONS==1: Enable multicast TX support like the socket options
- * IP_MULTICAST_TTL/IP_MULTICAST_IF/IP_MULTICAST_LOOP
- */
-#if !defined LWIP_MULTICAST_TX_OPTIONS || defined __DOXYGEN__
-#define LWIP_MULTICAST_TX_OPTIONS       (LWIP_IGMP && LWIP_UDP)
 #endif
 /**
  * @}
@@ -1047,11 +1070,9 @@
 #define LWIP_DNS_SECURE_NO_MULTIPLE_OUTSTANDING 2
 #define LWIP_DNS_SECURE_RAND_SRC_PORT           4
 
-/** DNS_LOCAL_HOSTLIST: Implements a local host-to-address list. If enabled,
- *  you have to define
- *  \#define DNS_LOCAL_HOSTLIST_INIT {{"host1", 0x123}, {"host2", 0x234}}
- *  (an array of structs name/address, where address is an u32_t in network
- *  byte order).
+/** DNS_LOCAL_HOSTLIST: Implements a local host-to-address list. If enabled, you have to define an initializer:
+ *  \#define DNS_LOCAL_HOSTLIST_INIT {DNS_LOCAL_HOSTLIST_ELEM("host_ip4", IPADDR4_INIT_BYTES(1,2,3,4)), \
+ *                                    DNS_LOCAL_HOSTLIST_ELEM("host_ip6", IPADDR6_INIT_HOST(123, 234, 345, 456)}
  *
  *  Instead, you can also use an external function:
  *  \#define DNS_LOOKUP_LOCAL_EXTERN(x) extern err_t my_lookup_function(const char *name, ip_addr_t *addr, u8_t dns_addrtype)
@@ -1374,6 +1395,14 @@
 #if !defined PBUF_POOL_BUFSIZE || defined __DOXYGEN__
 #define PBUF_POOL_BUFSIZE               LWIP_MEM_ALIGN_SIZE(TCP_MSS+40+PBUF_LINK_ENCAPSULATION_HLEN+PBUF_LINK_HLEN)
 #endif
+
+/**
+ * LWIP_PBUF_REF_T: Refcount type in pbuf.
+ * Default width of u8_t can be increased if 255 refs are not enough for you.
+ */
+#ifndef LWIP_PBUF_REF_T
+#define LWIP_PBUF_REF_T u8_t
+#endif
 /**
  * @}
  */
@@ -1388,6 +1417,14 @@
  * @ingroup lwip_opts
  * @{
  */
+/**
+ * LWIP_SINGLE_NETIF==1: use a single netif only. This is the common case for
+ * small real-life targets. Some code like routing etc. can be left out.
+ */
+#if !defined LWIP_SINGLE_NETIF || defined __DOXYGEN__
+#define LWIP_SINGLE_NETIF               0
+#endif
+
 /**
  * LWIP_NETIF_HOSTNAME==1: use DHCP_OPTION_HOSTNAME with netif's hostname
  * field.
@@ -1409,6 +1446,15 @@
  */
 #if !defined LWIP_NETIF_STATUS_CALLBACK || defined __DOXYGEN__
 #define LWIP_NETIF_STATUS_CALLBACK      0
+#endif
+
+/**
+ * LWIP_NETIF_EXT_STATUS_CALLBACK==1: Support an extended callback function 
+ * for several netif related event that supports multiple subscribers.
+ * @see netif_ext_status_callback
+ */
+#if !defined LWIP_NETIF_EXT_STATUS_CALLBACK || defined __DOXYGEN__
+#define LWIP_NETIF_EXT_STATUS_CALLBACK  0
 #endif
 
 /**
@@ -1478,7 +1524,7 @@
  * netif is available, loopback traffic uses this netif.
  */
 #if !defined LWIP_HAVE_LOOPIF || defined __DOXYGEN__
-#define LWIP_HAVE_LOOPIF                LWIP_NETIF_LOOPBACK
+#define LWIP_HAVE_LOOPIF                (LWIP_NETIF_LOOPBACK && !LWIP_SINGLE_NETIF)
 #endif
 
 /**
@@ -1735,7 +1781,7 @@
 #define LWIP_SOCKET                     1
 #endif
 
-/* LWIP_SOCKET_SET_ERRNO==1: Set errno when socket functions cannot complete
+/** LWIP_SOCKET_SET_ERRNO==1: Set errno when socket functions cannot complete
  * successfully, as required by POSIX. Default is POSIX-compliant.
  */
 #if !defined LWIP_SOCKET_SET_ERRNO || defined __DOXYGEN__
@@ -1859,6 +1905,16 @@
  */
 #if !defined LWIP_FIONREAD_LINUXMODE || defined __DOXYGEN__
 #define LWIP_FIONREAD_LINUXMODE         0
+#endif
+
+/**
+ * LWIP_SOCKET_SELECT==1 (default): enable select() for sockets (uses a netconn
+ * callback to keep track of events).
+ * This saves RAM (counters per socket) and code (netconn event callback), which
+ * should improve performance a bit).
+ */
+#if !defined LWIP_SOCKET_SELECT || defined __DOXYGEN__
+#define LWIP_SOCKET_SELECT              1
 #endif
 /**
  * @}
@@ -2156,6 +2212,25 @@
 #endif
 
 /**
+ * LWIP_IPV6_SCOPES==1: Enable support for IPv6 address scopes, ensuring that
+ * e.g. link-local addresses are really treated as link-local. Disable this
+ * setting only for single-interface configurations.
+ */
+#if !defined LWIP_IPV6_SCOPES || defined __DOXYGEN__
+#define LWIP_IPV6_SCOPES                (LWIP_IPV6 && !LWIP_SINGLE_NETIF)
+#endif
+
+/**
+ * LWIP_IPV6_SCOPES_DEBUG==1: Perform run-time checks to verify that addresses
+ * are properly zoned (see ip6_zone.h on what that means) where it matters.
+ * Enabling this setting is highly recommended when upgrading from an existing
+ * installation that is not yet scope-aware; otherwise it may be too expensive.
+ */
+#if !defined LWIP_IPV6_SCOPES_DEBUG || defined __DOXYGEN__
+#define LWIP_IPV6_SCOPES_DEBUG          0
+#endif
+
+/**
  * LWIP_IPV6_NUM_ADDRESSES: Number of IPv6 addresses per netif.
  */
 #if !defined LWIP_IPV6_NUM_ADDRESSES || defined __DOXYGEN__
@@ -2196,6 +2271,17 @@
  */
 #if !defined LWIP_IPV6_AUTOCONFIG || defined __DOXYGEN__
 #define LWIP_IPV6_AUTOCONFIG            (LWIP_IPV6)
+#endif
+
+/**
+ * LWIP_IPV6_ADDRESS_LIFETIMES==1: Keep valid and preferred lifetimes for each
+ * IPv6 address. Required for LWIP_IPV6_AUTOCONFIG. May still be enabled
+ * otherwise, in which case the application may assign address lifetimes with
+ * the appropriate macros. Addresses with no lifetime are assumed to be static.
+ * If this option is disabled, all addresses are assumed to be static.
+ */
+#if !defined LWIP_IPV6_ADDRESS_LIFETIMES || defined __DOXYGEN__
+#define LWIP_IPV6_ADDRESS_LIFETIMES     (LWIP_IPV6_AUTOCONFIG)
 #endif
 
 /**
@@ -2416,6 +2502,15 @@
  */
 
 /**
+ * LWIP_HOOK_FILENAME: Custom filename to \#include in files that provide hooks.
+ * Declare your hook function prototypes in there, you may also \#include all headers
+ * providing data types that are need in this file.
+ */
+#ifdef __DOXYGEN__
+#define LWIP_HOOK_FILENAME "path/to/my/lwip_hooks.h"
+#endif
+
+/**
  * LWIP_HOOK_TCP_ISN:
  * Hook for generation of the Initial Sequence Number (ISN) for a new TCP
  * connection. The default lwIP ISN generation algorithm is very basic and may
@@ -2594,7 +2689,7 @@
    ---------------------------------------
 */
 /**
- * @defgroup lwip_opts_debugmsg Debugging
+ * @defgroup lwip_opts_debugmsg Debug messages
  * @ingroup lwip_opts_debug
  * @{
  */
@@ -2602,6 +2697,7 @@
  * LWIP_DBG_MIN_LEVEL: After masking, the value of the debug is
  * compared against this value. If it is smaller, then debugging
  * messages are written.
+ * @see debugging_levels
  */
 #if !defined LWIP_DBG_MIN_LEVEL || defined __DOXYGEN__
 #define LWIP_DBG_MIN_LEVEL              LWIP_DBG_LEVEL_ALL
@@ -2610,6 +2706,7 @@
 /**
  * LWIP_DBG_TYPES_ON: A mask that can be used to globally enable/disable
  * debug messages of certain types.
+ * @see debugging_levels
  */
 #if !defined LWIP_DBG_TYPES_ON || defined __DOXYGEN__
 #define LWIP_DBG_TYPES_ON               LWIP_DBG_ON
